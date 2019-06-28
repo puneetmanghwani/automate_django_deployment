@@ -1,0 +1,50 @@
+---
+- hosts: all
+  become: true
+  tasks: 
+    - name: installing apache and libapache2-mod and python3 and pip
+      apt: name={{item}} state=present update_cache=yes
+      with_items:
+        - apache2
+        - libapache2-mod-wsgi-py3
+        - python3-pip
+
+    - name: ensuring apache2 is started
+      service: name=apache2 state=started enabled=yes
+
+    - name: enabling the mod_wsgi    
+      apache2_module: state=present name=wsgi
+      notify: restart apache2
+    
+    - name: copying django project files
+      copy: src=Git_Project/ dest=/var/www/Git_Project/ mode=0755
+      notify: restart apache2  
+    
+    - name: copying apach virtual config file 
+      copy: src=django.conf dest=/etc/apache2/sites-available mode=0755
+      notify: restart apache2
+
+    - name: installing requirements like python libraries
+      pip: requirements=/var/www/Git_Project/requirement.txt 
+      notify: restart apache2
+   
+    - name: deactivating default webpage of apache2
+      file: path=/etc/apache2/sites-enabled/000-default.conf state=absent
+      notify: restart apache2
+
+    - name: activating new django webpage on apache2
+      file: src=/etc/apache2/sites-available/django.conf dest=/etc/apache2/sites-enabled/djanog.conf state=link
+      notify: restart apache2
+    
+    - name: adding path of project to wsgi file
+      lineinfile: dest=/var/www/Git_Project/Git_Project/wsgi.py insertbefore=^os.environ line="{{item}}"
+      with_items:
+        - import sys
+        - project_name=os.listdir('/var/www/')[0]
+        - sys.path.insert(0, '/var/www/'+project_name)
+      notify: restart apache2
+
+  handlers:
+    - name: restart apache2 
+      service: name=apache2 state=restarted
+

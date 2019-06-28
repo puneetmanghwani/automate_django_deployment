@@ -1,0 +1,6 @@
+[control]
+control ansible_connection=local
+
+
+[control:vars]
+ansible_python_interpreter=/usr/bin/python3  
